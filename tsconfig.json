@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES2021",
+    "baseUrl": "./src",
+    "rootDir": "",
     "lib": [
       "dom",
       "dom.iterable",
@@ -18,7 +20,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
   },
   "include": [
     "src"
