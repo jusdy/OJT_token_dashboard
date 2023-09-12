@@ -31,14 +31,14 @@ const TokenSelect = ({
       <HStack
         rounded={"2xl"}
         minW={"130px"}
-        bg={selectedToken >= 0 ? "gray.100" : "purple.400"}
+        bg={selectedToken >= 0 ? "gray.200" : "purple.400"}
         px={2}
         color={"black"}
         alignItems={"center"}
         gap={1}
         cursor={"pointer"}
         _hover={{
-          backgroundColor: selectedToken >= 0 ? "gray.200" : "purple.200",
+          backgroundColor: selectedToken >= 0 ? "gray.300" : "purple.300",
         }}
         onClick={() => setSelectToken(true)}
       >
@@ -79,6 +79,7 @@ const TokenSelect = ({
           p={4}
           cursor={"default"}
           overflow={"auto"}
+          zIndex={50}
         >
           <Image
             ml={"auto"}

@@ -36,7 +36,7 @@ const Dashboard = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [selectedDecimals, setSelectedDecimals] = useState<number>(0);
-
+  
   useEffect(() => {
     const getTokenData = async () => {
       try {
@@ -112,7 +112,7 @@ const Dashboard = () => {
                       colorScheme="blue"
                       onClick={() => setModal((prev) => !prev)}
                     >
-                      Add Token
+                      Add Custom Token
                     </Button>
 
                     <TableContainer mt={5}>
@@ -180,7 +180,7 @@ const Dashboard = () => {
             <TransactionHistory />
           </TabPanel>
           <TabPanel>
-            <Swap/>
+            <Swap tokenList={tokenList} loading={isLoading}/>
           </TabPanel>
         </TabPanels>
       </Tabs>
