@@ -28,9 +28,10 @@ import TransactionModal from "./TransactionModal";
 interface PropsType {
   tokenList: any;
   loading: boolean;
+  setTokenList: (list: any) => void;
 }
 
-const Swap = ({ tokenList, loading }: PropsType) => {
+const Swap = ({ tokenList, loading, setTokenList }: PropsType) => {
   const publicClient = usePublicClient();
   const { address } = useAccount();
   const chainId = useChainId();
@@ -208,8 +209,6 @@ const Swap = ({ tokenList, loading }: PropsType) => {
     setBalance();
   }, [inTokenIndex, outTokenIndex]);
 
-  console.log(data)
-
   const isSwap: boolean = useMemo(
     () =>
       inAmount && outAmount && inTokenIndex >= 0 && outTokenIndex >= 0 && data?.[0].result
@@ -224,7 +223,7 @@ const Swap = ({ tokenList, loading }: PropsType) => {
       inTokenIndex && outTokenIndex && !data?.[0].result
         ? "Insufficent Liqudity"
         : "Swap",
-    [inTokenIndex, outTokenIndex, inAmount, outAmount, data]
+    [inTokenIndex, outTokenIndex, inAmount, data]
   );
 
   return (
@@ -237,6 +236,9 @@ const Swap = ({ tokenList, loading }: PropsType) => {
         inAmount={inAmount}
         outAmount={outAmount}
         currentRoute={currentRoute}
+        setTokenList={setTokenList}
+        setInTokenBalance={setInTokenBalance}
+        setOutTokenBalance={setOutTokenBalance}
       />
       {tokenList && !loading ? (
         <Box

@@ -35,8 +35,6 @@ const Dashboard = () => {
   const [isTransferModal, setTransferModal] = useState<boolean>(false);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [selectedToken, setSelectedToken] = useState<any>();
-  const [selectedAddress, setSelectedAddress] = useState<string>("");
-  const [selectedDecimals, setSelectedDecimals] = useState<number>(0);
   
   useEffect(() => {
     const getTokenData = async () => {
@@ -148,9 +146,7 @@ const Dashboard = () => {
                               </Td>
                               <Td>{item?.token?.address}</Td>
                               <Td>
-                                {parseFloat(item?.balance?.formatted).toFixed(
-                                  2
-                                )}
+                                {parseFloat(item?.balance?.formatted).toFixed(3)}
                               </Td>
                               <Td>
                                 <Button
@@ -177,7 +173,7 @@ const Dashboard = () => {
             <TransactionHistory />
           </TabPanel>
           <TabPanel>
-            <Swap tokenList={tokenList} loading={isLoading}/>
+            <Swap tokenList={tokenList} loading={isLoading} setTokenList={setTokenList}/>
           </TabPanel>
         </TabPanels>
       </Tabs>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -16,14 +16,15 @@ import {
   Flex,
 } from "@chakra-ui/react";
 import { CurrencyAmount, Percent, Token, TradeType } from "@uniswap/sdk-core";
-import { erc20ABI, useContractWrite, useSendTransaction, useAccount } from "wagmi";
+import { erc20ABI, useContractWrite, useSendTransaction, useAccount, useWaitForTransaction, usePrepareContractWrite, useChainId } from "wagmi";
 import { SWAP_ROUTER_ADDRESS } from "constant/address";
 import { parseUnits } from "viem";
 import { SwapOptions, SwapRouter, Trade } from "@uniswap/v3-sdk";
 import { fromReadableAmount } from "utils";
 import JSBI from "jsbi";
 import { ethers } from "ethers";
-import { MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS } from "constant";
+import { MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS, tokenApi } from "constant";
+import { fetchBalance } from "@wagmi/core";
 
 interface ModalProps {
   isOpen: boolean;
@@ -33,6 +34,9 @@ interface ModalProps {
   inAmount: string;
   outAmount: string;
   currentRoute: any;
+  setTokenList: (list: any) => void;
+  setInTokenBalance: (balance: string) => void;
+  setOutTokenBalance: (balance: string) => void;
 }
 
 const TransactionModal = ({
@@ -42,28 +46,19 @@ const TransactionModal = ({
   outToken,
   inAmount,
   outAmount,
-  currentRoute
+  currentRoute,
+  setTokenList,
+  setInTokenBalance,
+  setOutTokenBalance
 }: ModalProps) => {
   const { address } = useAccount();
+  const chainId = useChainId();
   const [isConfirm, setConfirm] = useState<boolean>(false);
   const [confirmStatus, setConfirmStatus] = useState<number>(0);
   const [swapTx, setSwapTx] = useState<any>();
 
   const swapTransaction = useSendTransaction({
     ...swapTx,
-    onSuccess() {
-      toast({
-        title: 'Swap Info',
-        description: `You've converted ${inAmount} ${inToken.symbol} to ${Number(outAmount).toFixed(3)} ${outToken.symbol}.`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-        position: 'top'
-      })
-      onClose();
-      setConfirmStatus(0);
-      setConfirm(false);
-    },
     onError(err) {
       toast({
         title: "Error",
@@ -79,11 +74,12 @@ const TransactionModal = ({
 
   const toast = useToast();
 
-  const onHandleConfirm = () => {
-    setConfirm(true);
-    swapTokenApprove.write();
-  };
-
+  const { config } = usePrepareContractWrite({
+    address: inToken?.address as `0x${string}`,
+    abi: erc20ABI,
+    functionName: "approve",
+    args: [SWAP_ROUTER_ADDRESS, parseUnits(inAmount, inToken?.decimals)],
+  })
   const swapTokenApprove = useContractWrite({
     address: inToken?.address as `0x${string}`,
     abi: erc20ABI,
@@ -101,7 +97,6 @@ const TransactionModal = ({
       setConfirm(false);
     },
     onSuccess() {
-      setConfirmStatus(1);
       const uncheckedTrade = Trade.createUncheckedTrade({
         route: currentRoute,
         inputAmount: CurrencyAmount.fromRawAmount(
@@ -140,11 +135,68 @@ const TransactionModal = ({
     },
   });
 
-  useEffect(() => {
-    if (swapTx) {
+  const onHandleConfirm = () => {
+    setConfirm(true);
+    swapTokenApprove?.write();
+  };
+
+
+  useWaitForTransaction({hash: swapTokenApprove?.data?.hash,
+    onSuccess() {
+      setConfirmStatus(1);
       swapTransaction.sendTransaction(swapTx);
+    },
+  });
+
+  useWaitForTransaction({hash: swapTransaction?.data?.hash,
+    onSuccess() {
+      toast({
+        title: 'Swap Info',
+        description: `You've converted ${inAmount} ${inToken.symbol} to ${Number(outAmount).toFixed(3)} ${outToken.symbol}.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+        position: 'top'
+      })
+      onClose();
+      setConfirmStatus(0);
+      setConfirm(false);
+      getTokenData();
+    },
+  });
+
+  const getTokenData = async () => {
+    const data = await fetch(tokenApi);
+    const tokenData = await data.json();
+    const resultTokenData = tokenData?.datas.filter(
+      (token: any) => token.chainId === chainId
+    );
+
+    let tempList = resultTokenData;
+    for (const item of tempList) {
+      const balance = await fetchBalance({
+        address: address as `0x${string}`,
+        chainId: chainId,
+        token: item?.token?.address,
+      });
+      item.balance = balance;
     }
-  }, [swapTx])
+    setTokenList(resultTokenData);
+
+    const inBalance = await fetchBalance({
+      address: address as `0x${string}`,
+      chainId: chainId,
+      token: inToken?.address as `0x${string}`,
+    });
+    setInTokenBalance(parseFloat(inBalance?.formatted).toFixed(3));
+
+    const outBalance = await fetchBalance({
+      address: address as `0x${string}`,
+      chainId: chainId,
+      token: outToken?.address as `0x${string}`,
+    });
+    setOutTokenBalance(parseFloat(outBalance?.formatted).toFixed(3));
+  }
 
   return (
     <Modal
@@ -167,7 +219,7 @@ const TransactionModal = ({
             <Box>
               <Stack>
                 <Text fontSize={18} as={"b"} textAlign={"center"}>
-                  {`Enable spending ${inToken.symbol}...`}
+                  {confirmStatus === 0 ? `Enable spending ${inToken.symbol}...` : `Confirm Swap`}
                 </Text>
                 <Spinner
                   mx={"auto"}
