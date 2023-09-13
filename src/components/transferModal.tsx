@@ -22,28 +22,36 @@ import {
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tokenAddress: string;
-  decimals: number;
+  token: any;
 }
 
 const TransferModal = ({
   isOpen,
   onClose,
-  tokenAddress,
-  decimals,
+  token
 }: ModalProps) => {
   const [recipientAddress, setRecipientAddress] = useState<string>("");
   const [transferAmount, setTransferAmount] = useState<any>("0");
   const toast = useToast();
 
   const {isLoading, write } = useContractWrite({
-    address: tokenAddress as `0x${string}`,
+    address: token?.address as `0x${string}`,
     abi: erc20ABI,
     functionName: "transfer",
     args: [
       recipientAddress as `0x${string}`,
-      parseUnits(transferAmount, decimals),
+      parseUnits(transferAmount, token?.decimals),
     ],
+    onSuccess() {
+      toast({
+        title: 'Transfer Info',
+        description: `You've sent ${transferAmount} ${token?.symbol}.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+        position: 'top'
+      })
+    },
     onError(err) {
       toast({
         title: 'Error',

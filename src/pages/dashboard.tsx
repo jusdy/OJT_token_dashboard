@@ -24,16 +24,17 @@ import {
 import { tokenApi } from "constant";
 import AddTokenModal from "components/addTokenModal";
 import TransferModal from "components/transferModal";
-import TransactionHistory from "components/transactionHistory";
+import TransactionHistory from "pages/transactionHistory";
 import Swap from "./swap";
 
 const Dashboard = () => {
   const [tokenList, setTokenList] = useState<object[]>();
   const chainId = useChainId();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [isModal, setModal] = useState<boolean>(false);
   const [isTransferModal, setTransferModal] = useState<boolean>(false);
   const [isLoading, setLoading] = useState<boolean>(true);
+  const [selectedToken, setSelectedToken] = useState<any>();
   const [selectedAddress, setSelectedAddress] = useState<string>("");
   const [selectedDecimals, setSelectedDecimals] = useState<number>(0);
   
@@ -65,8 +66,6 @@ const Dashboard = () => {
     getTokenData();
   }, [chainId, address]);
 
-  console.log(tokenList);
-
   return (
     <Box mx={[4, 8, 20, 20]} mt={20}>
       <Tabs>
@@ -78,7 +77,7 @@ const Dashboard = () => {
 
         <TabPanels>
           <TabPanel>
-            {address && (
+            {isConnected && (
               <>
                 <AddTokenModal
                   isOpen={isModal}
@@ -89,8 +88,7 @@ const Dashboard = () => {
                 <TransferModal
                   isOpen={isTransferModal}
                   onClose={() => setTransferModal(false)}
-                  tokenAddress={selectedAddress}
-                  decimals={selectedDecimals}
+                  token={selectedToken}
                 />
                 {isLoading && (
                   <Flex justifyContent={"center"} alignItems={"center"} gap={4}>
@@ -159,8 +157,7 @@ const Dashboard = () => {
                                   colorScheme="purple"
                                   onClick={() => {
                                     setTransferModal((prev) => !prev);
-                                    setSelectedAddress(item?.token?.address);
-                                    setSelectedDecimals(item?.token?.decimals);
+                                    setSelectedToken(item?.token)
                                   }}
                                 >
                                   Transfer

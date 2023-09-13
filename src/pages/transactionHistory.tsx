@@ -17,7 +17,7 @@ import { formatEther } from "viem";
 import { shortenAddress, shortenHash } from "utils";
 
 const TransactionHistory = () => {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const txQuery = gql`
     query GetTransactions {
         transfers(where:{from: "${address}"}) {
@@ -31,9 +31,9 @@ const TransactionHistory = () => {
     `;
   const { data } = useQuery(txQuery);
 
-  console.log(data);
   return (
     <TableContainer>
+      {isConnected && 
       <Table variant="striped">
         <TableCaption placement="top" fontSize={24} mb={6}>
           Transaction History
@@ -84,6 +84,7 @@ const TransactionHistory = () => {
           ))}
         </Tbody>
       </Table>
+      }
     </TableContainer>
   );
 };

@@ -11,42 +11,18 @@ import {
   useAccount,
   useChainId,
   useContractReads,
-  useContractWrite,
   usePublicClient,
-  useSendTransaction
 } from "wagmi";
 import TokenSelect from "./tokenSelect";
 import { useEffect, useMemo, useState } from "react";
-// import { tokenApi, GETH_Address } from "constant";
 import { fetchBalance, erc20ABI } from "@wagmi/core";
-import {
-  Pool,
-  Route,
-  SwapQuoter,
-  Trade,
-  computePoolAddress,
-  SwapOptions,
-  SwapRouter,
-} from "@uniswap/v3-sdk";
-import { FeeAmount, MAX_FEE_PER_GAS, MAX_PRIORITY_FEE_PER_GAS } from "constant";
-import {
-  FACTORY_CONTRACT,
-  QuoterV2_ADDRESS,
-  SWAP_ROUTER_ADDRESS,
-} from "constant/address";
-import {
-  Currency,
-  CurrencyAmount,
-  Token,
-  TradeType,
-  Percent,
-} from "@uniswap/sdk-core";
+import { Pool, Route, SwapQuoter, computePoolAddress } from "@uniswap/v3-sdk";
+import { FeeAmount } from "constant";
+import { FACTORY_CONTRACT, QuoterV2_ADDRESS } from "constant/address";
+import { Currency, CurrencyAmount, Token, TradeType } from "@uniswap/sdk-core";
 import IUniswapV3PoolABI from "@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json";
-import QuoterABI from "@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json";
-import { parseUnits } from "viem";
 import { ethers } from "ethers";
 import { fromReadableAmount } from "utils";
-import JSBI from "jsbi";
 import TransactionModal from "./TransactionModal";
 
 interface PropsType {
@@ -66,10 +42,7 @@ const Swap = ({ tokenList, loading }: PropsType) => {
   const [inTokenBalance, setInTokenBalance] = useState<string>("");
   const [outTokenBalance, setOutTokenBalance] = useState<string>("");
   const [currentRoute, setCurrentRoute] = useState<any>();
-  const [swapTx, setSwapTx] = useState<any>();
   const [isModal, setModal] = useState<boolean>(false);
-
-  const swapTransaction = useSendTransaction(swapTx);
 
   const tokenA = useMemo(
     () =>
@@ -124,60 +97,6 @@ const Swap = ({ tokenList, loading }: PropsType) => {
     abi: erc20ABI,
   };
 
-  const swapTokenApprove = useContractWrite({
-    address: tokenA?.address as `0x${string}`,
-    abi: erc20ABI,
-    functionName: "approve",
-    args: [SWAP_ROUTER_ADDRESS, parseUnits(inAmount, tokenA?.decimals)],
-    onError(err) {
-      toast({
-        title: "Error",
-        description: err.message,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-        position: "top",
-      });
-    },
-    onSuccess() {
-      onSwap();
-    },
-  });
-
-  const onSwap = () => {
-    const uncheckedTrade = Trade.createUncheckedTrade({
-      route: currentRoute,
-      inputAmount: CurrencyAmount.fromRawAmount(
-        tokenA!,
-        fromReadableAmount(inAmount, tokenA?.decimals).toString()
-      ),
-      outputAmount: CurrencyAmount.fromRawAmount(
-        tokenB!,
-        JSBI.toNumber(JSBI.BigInt(ethers.utils.parseUnits(outAmount, tokenB?.decimals))),
-      ),
-      tradeType: TradeType.EXACT_INPUT,
-    });
-
-    const options: SwapOptions = {
-      slippageTolerance: new Percent(50, 10_000), // 50 bips, or 0.50%
-      deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from the current Unix time
-      recipient: address as string,
-    }
-    
-    const methodParameters = SwapRouter.swapCallParameters([uncheckedTrade], options)
-
-    const tx = {
-      data: methodParameters.calldata,
-      to: SWAP_ROUTER_ADDRESS,
-      value: methodParameters.value,
-      from: address,
-      maxFeePerGas: MAX_FEE_PER_GAS,
-      maxPriorityFeePerGas: MAX_PRIORITY_FEE_PER_GAS,
-    }
-    setSwapTx(tx);
-    swapTransaction.sendTransaction();
-  }
-
   const { data } = useContractReads({
     contracts: [
       {
@@ -231,7 +150,6 @@ const Swap = ({ tokenList, loading }: PropsType) => {
       to: QuoterV2_ADDRESS,
       data: calldata as `0x${string}`,
     });
-    console.log(quoteCallReturnData);
 
     return ethers.utils.defaultAbiCoder.decode(
       ["uint256"],
@@ -265,13 +183,11 @@ const Swap = ({ tokenList, loading }: PropsType) => {
     }
   }, [inAmount]);
 
-  const onApprove = async () => {
-    swapTokenApprove.write?.();
-  };
-
   useEffect(() => {
     const setBalance = async () => {
-      if (inTokenIndex >= 0) {
+      setInAmount("");
+      setOutAmount("");
+      if (inTokenIndex >= 0 && address) {
         const inBalance = await fetchBalance({
           address: address as `0x${string}`,
           chainId: chainId,
@@ -286,33 +202,29 @@ const Swap = ({ tokenList, loading }: PropsType) => {
           chainId: chainId,
           token: tokenList?.[outTokenIndex]?.token?.address,
         });
-        console.log(outBalance);
         setOutTokenBalance(parseFloat(outBalance?.formatted).toFixed(3));
       }
     };
     setBalance();
   }, [inTokenIndex, outTokenIndex]);
 
+  console.log(data)
+
   const isSwap: boolean = useMemo(
     () =>
-      inAmount &&
-      outAmount &&
-      inTokenIndex &&
-      outTokenIndex &&
-      !swapTokenApprove.isLoading &&
-      !swapTransaction.isLoading &&
-      data?.[0].result
+      inAmount && outAmount && inTokenIndex >= 0 && outTokenIndex >= 0 && data?.[0].result
         ? true
         : false,
-    [
-      inTokenIndex,
-      outTokenIndex,
-      inAmount,
-      outAmount,
-      swapTokenApprove.isLoading,
-      swapTransaction.isLoading,
-      data
-    ]
+    [inTokenIndex, outTokenIndex, inAmount, outAmount, data]
+  );
+
+  const btnText: string = useMemo(
+    () =>
+      !inAmount ? "Enter an amount" :
+      inTokenIndex && outTokenIndex && !data?.[0].result
+        ? "Insufficent Liqudity"
+        : "Swap",
+    [inTokenIndex, outTokenIndex, inAmount, outAmount, data]
   );
 
   return (
@@ -324,9 +236,9 @@ const Swap = ({ tokenList, loading }: PropsType) => {
         outToken={tokenB}
         inAmount={inAmount}
         outAmount={outAmount}
-        swapTokenApprove={swapTokenApprove}
+        currentRoute={currentRoute}
       />
-      {!loading ? (
+      {tokenList && !loading ? (
         <Box
           position={"relative"}
           maxW={400}
@@ -417,6 +329,7 @@ const Swap = ({ tokenList, loading }: PropsType) => {
                 }}
                 onChange={(e) => setOutAmount(e.target.value)}
                 value={outAmount}
+                readOnly
               />
               <TokenSelect
                 tokenList={tokenList}
@@ -436,27 +349,21 @@ const Swap = ({ tokenList, loading }: PropsType) => {
           </Stack>
 
           <Button
-            colorScheme="green"
+            colorScheme="blue"
             isDisabled={!isSwap}
             w={"100%"}
             h={14}
             rounded={"2xl"}
-            onClick={() => setModal(true)}
+            fontSize={24}
+            as={'b'}
+            onClick={() => {
+              if(isSwap) setModal(true)
+            }}
           >
-            {!swapTokenApprove.isLoading && !swapTransaction.isLoading ? (
-              "Review Swap"
-            ) : (
-              <Spinner
-                thickness="4px"
-                speed="0.65s"
-                emptyColor="gray.200"
-                color="blue.500"
-                size="sm" 
-              />
-            )}
+            {btnText}
           </Button>
         </Box>
-      ) : (
+      ) : tokenList && loading ? (
         <Flex justifyContent={"center"} alignItems={"center"} gap={4}>
           <Text as={"b"} fontSize={20}>
             Loading Data...
@@ -469,19 +376,11 @@ const Swap = ({ tokenList, loading }: PropsType) => {
             size="xl"
           />
         </Flex>
+      ) : (
+        <></>
       )}
     </>
   );
 };
 
 export default Swap;
-function toast(arg0: {
-  title: string;
-  description: string;
-  status: string;
-  duration: number;
-  isClosable: boolean;
-  position: string;
-}) {
-  throw new Error("Function not implemented.");
-}
