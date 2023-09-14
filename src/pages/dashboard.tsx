@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useChainId, useAccount } from "wagmi";
-import { fetchBalance } from "@wagmi/core";
+import { useChainId, useAccount, useContractReads, useContractRead } from "wagmi";
+import { erc20ABI, fetchBalance } from "@wagmi/core";
 import {
   Box,
   Table,
@@ -35,6 +35,17 @@ const Dashboard = () => {
   const [isTransferModal, setTransferModal] = useState<boolean>(false);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [selectedToken, setSelectedToken] = useState<any>();
+  const [tokenContractList, setTokenContractList] = useState<any>([{}]);
+
+  const { data } = useContractRead({
+
+      address: "0xe86fCf5213C785AcF9a8BFfEeDEfA9a2199f7Da6" as `0x${string}`,
+      abi: erc20ABI,
+      functionName: 'balanceOf',
+
+  });
+
+  console.log(data)
   
   useEffect(() => {
     const getTokenData = async () => {
@@ -45,23 +56,37 @@ const Dashboard = () => {
         const resultTokenData = tokenData?.datas.filter(
           (token: any) => token.chainId === chainId
         );
+        
+        for (const item of resultTokenData) {
+        //   const tokenContract = {
+        //     address: item?.token.address,
+        //     abi: erc20ABI,
+        //   }
+        //   const contractObject = {
+        //     ...tokenContract,
+        //     functionName: 'balanceOf'
+        //   };
 
-        let tempList = resultTokenData;
-        for (const item of tempList) {
+        //   setTokenContractList((prev: any) => [...prev, contractObject])
           const balance = await fetchBalance({
             address: address as `0x${string}`,
             chainId: chainId,
-            token: item?.token?.address,
+            token: item?.token?.address as `0x${string}`,
           });
           item.balance = balance;
         }
+
+        // let tempList = resultTokenData;
+        // tempList.map((item: any, key: number) => {
+        //   item.balance = "100";
+        // })
         setTokenList(resultTokenData);
         setLoading(false);
       } catch (err) {
         console.log(err);
       }
     };
-    getTokenData();
+    if (isConnected) getTokenData();
   }, [chainId, address]);
 
   return (

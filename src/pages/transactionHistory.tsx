@@ -10,8 +10,7 @@ import {
   Link,
   Tooltip,
 } from "@chakra-ui/react";
-import { useQuery } from "@apollo/client";
-import { gql } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { shortenAddress, shortenHash } from "utils";
